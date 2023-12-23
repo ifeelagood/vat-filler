@@ -5,48 +5,58 @@
 #include "Pins.h"
 #include "Config.h"
 
-LiquidSensor sensor(Pins::LiquidSensor);
-AccelStepper stepper(AccelStepper::FULL4WIRE, Pins::L298N::I1, Pins::L298N::I2, Pins::L298N::I3, Pins::L298N::I4);
 
+template <typename T>
+constexpr long STEPS(T rpm) { return rpm * Config::StepsPerRevolution * Config::StepRatio; }
+
+LiquidSensor sensor(Pins::LiquidSensor);
+AccelStepper stepper(AccelStepper::DRIVER, Pins::DRV8825::STEP, Pins::DRV8825::DIR);
 // state
 unsigned long last_sensor_check = 0;
 bool pump_active = false;
 
 void initialiseStepper()
 {
-    stepper.setMaxSpeed(Config::MaxSpeed * Config::StepsPerRevolution);
-    stepper.setAcceleration(Config::Acceleration * Config::StepsPerRevolution);
-    stepper.setSpeed(Config::Speed * Config::StepsPerRevolution);
+    pinMode(Pins::DRV8825::SLEEP, OUTPUT);
+    pinMode(Pins::DRV8825::RESET, OUTPUT);
+
+    digitalWrite(Pins::DRV8825::RESET, HIGH);
+
+
+    // pinMode(Pins::DRV8825::DIR, OUTPUT);
+    // pinMode(Pins::DR2V8825::STEP, OUTPUT);
+
+    stepper.setMaxSpeed(STEPS(Config::MaxSpeed));
+    stepper.setAcceleration(STEPS(Config::Acceleration));
+    stepper.setSpeed(STEPS(Config::Speed));
 }
 
 void setPumpState(bool enabled)
 {
-    int state = enabled ? HIGH : LOW;
-    digitalWrite(Pins::L298N::E1, state);
-    digitalWrite(Pins::L298N::E2, state);
-    digitalWrite(Pins::LED, state);
-
-    if (enabled) stepper.move(Config::StepDelta);
+    if (enabled)
+    {
+        stepper.setCurrentPosition(0L);
+        stepper.move(STEPS(Config::RevolutionDelta));
+    }
     else stepper.stop();
+
+    digitalWrite(Pins::LED,  enabled ? HIGH : LOW);
+    digitalWrite(Pins::DRV8825::SLEEP, enabled ? HIGH : LOW);
+    // digitalWrite(Pins::DRV8825::RESET, enabled ? HIGH : LOW); // effectively resets
+    delay(4); // t_wake=2 of DRV8825, see ds @ p7
 
     pump_active = enabled;
 }
-
-
-
 
 void setup()
 {
     Serial.begin(9600);
 
-    pinMode(Pins::L298N::E1, OUTPUT);
-    pinMode(Pins::L298N::E2, OUTPUT);
     pinMode(Pins::LED, OUTPUT);
     pinMode(Pins::STOP, INPUT);
 
-    setPumpState(false);
-
     initialiseStepper();
+    setPumpState(false);
 }
 
 void loop()
@@ -54,11 +64,7 @@ void loop()
     bool stop = digitalRead(Pins::STOP);
     if (stop)
     {
-        if (pump_active)
-        {
-            digitalWrite(Pins::L298N::E1, LOW);
-            digitalWrite(Pins::L298N::E2, LOW);
-        }
+        if (pump_active) setPumpState(false);
         while (digitalRead(Pins::STOP) == HIGH)
         {
             digitalWrite(Pins::LED, HIGH);
@@ -66,11 +72,8 @@ void loop()
             digitalWrite(Pins::LED, LOW);
             delay(500);
         }
-        if (pump_active)
-        {
-            digitalWrite(Pins::L298N::E1, HIGH);
-            digitalWrite(Pins::L298N::E2, HIGH);
-        }
+
+        if (pump_active) setPumpState(true);
     }
 
     long distance = stepper.distanceToGo();
@@ -79,7 +82,8 @@ void loop()
     // if pump is active, make sure its always targeting StepDelta
     if (pump_active)
     {
-        if (distance < Config::StepDelta) stepper.moveTo(position + Config::StepDelta - distance);
+        constexpr long target_delta = STEPS(Config::RevolutionDelta);
+        stepper.moveTo(position + target_delta - distance);
         stepper.run();
     }
 
@@ -94,5 +98,6 @@ void loop()
         if (liquid_low && !pump_active) setPumpState(true);
         if (!liquid_low && pump_active) setPumpState(false);
     }
+
 
 }
