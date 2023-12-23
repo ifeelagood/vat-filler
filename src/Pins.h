@@ -4,22 +4,12 @@
 namespace Pins
 {
 
-    class L298N
+    class DRV8825
     {
     public:
-        // enable pins
-        static const int E1 = 8;
-        static const int E2 = 9;
-
-        // current sensing pins
-        static const int CS1 = A1;
-        static const int CS2 = A2;
-
-        // input pins
-        static const int I1 = 4;
-        static const int I2 = 5;
-        static const int I3 = 6;
-        static const int I4 = 7;
+        static const int SLEEP = 10;
+        static const int STEP = 9;
+        static const int DIR = 8;
     };
 
     class OLED
