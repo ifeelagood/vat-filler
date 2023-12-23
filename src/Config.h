@@ -3,11 +3,13 @@
 
 namespace Config
 {
-    constexpr int StepsPerRevolution = 200;
-    constexpr float MaxSpeed = 20.0;
-    constexpr float Acceleration = 2.0;
-    constexpr float Speed = 4.0;
-    constexpr long StepDelta = 400;
+    constexpr int StepsPerRevolution =  200; // spr
+    constexpr long StepDelta         =  400; // s
+
+    constexpr float MaxSpeed         = 20.0; // rpm
+    constexpr float Acceleration     =  6.0; // rpm / s
+    constexpr float Speed            =  5.0; // rpm
+
     constexpr float LiquidThreshold = 30.0; // 0 - 100
     constexpr unsigned long LiquidInterval = 2500; // ms
 }
