@@ -24,11 +24,20 @@ void setPumpState(bool enabled)
     int state = enabled ? HIGH : LOW;
     digitalWrite(Pins::L298N::E1, state);
     digitalWrite(Pins::L298N::E2, state);
+    digitalWrite(Pins::LED, state);
 
     if (enabled) stepper.move(Config::StepDelta);
     else stepper.stop();
 
     pump_active = enabled;
+}
+
+void flashLED(long ms)
+{
+    delay(ms);
+    digitalWrite(Pins::LED, HIGH);
+    delay(ms);
+    digitalWrite(Pins::LED, LOW);
 }
 
 void setup()
@@ -37,16 +46,24 @@ void setup()
 
     pinMode(Pins::L298N::E1, OUTPUT);
     pinMode(Pins::L298N::E2, OUTPUT);
-    pinMode(Pins::STOP, INPUT);
+    pinMode(Pins::LED, OUTPUT);
+    pinMode(Pins::EmergencyStop, INPUT_PULLUP);
 
     setPumpState(false);
 
     initialiseStepper();
+
+    // startup flash
+    for (int i = 0; i < 10; i++)
+    {
+        flashLED(100);
+    }
 }
 
 void loop()
 {
-    bool stop = digitalRead(Pins::STOP);
+    // stop LOW = stop
+    bool stop = !digitalRead(Pins::EmergencyStop);
     if (stop)
     {
         if (pump_active)
@@ -54,14 +71,15 @@ void loop()
             digitalWrite(Pins::L298N::E1, LOW);
             digitalWrite(Pins::L298N::E2, LOW);
         }
-        while (digitalRead(Pins::STOP) == HIGH)
+        while (digitalRead(Pins::EmergencyStop) == LOW)
         {
-            delay(500);
+            flashLED(500);
         }
         if (pump_active)
         {
             digitalWrite(Pins::L298N::E1, HIGH);
             digitalWrite(Pins::L298N::E2, HIGH);
+            digitalWrite(Pins::LED, HIGH); // as we are not calling set pump state
         }
     }
 
@@ -81,10 +99,10 @@ void loop()
         last_sensor_check = millis();
 
         float liquid = sensor.read();
-        bool liquid_low = liquid < Config::LiquidThreshold;
 
-        if (liquid_low && !pump_active) setPumpState(true);
-        if (!liquid_low && pump_active) setPumpState(false);
+        // if (!pump_active) setPumpState(true);
+        if (liquid < Config::ThresholdLower && !pump_active) setPumpState(true); // turn pump on if falls lower than lower threshold
+        if (liquid > Config::ThresholdUpper && pump_active) setPumpState(false); // turn pump off if greater than upper threshold
     }
 
 }
