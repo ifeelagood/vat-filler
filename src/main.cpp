@@ -26,8 +26,13 @@ void setPumpState(bool enabled)
     digitalWrite(Pins::L298N::E2, state);
     digitalWrite(Pins::LED, state);
 
-    if (enabled) stepper.move(Config::StepDelta);
-    else stepper.stop();
+    if (enabled)
+    {
+        stepper.move(Config::StepDelta);
+    } else
+    {
+        stepper.stop();
+    }
 
     pump_active = enabled;
 }
@@ -101,8 +106,14 @@ void loop()
         float liquid = sensor.read();
 
         // if (!pump_active) setPumpState(true);
-        if (liquid < Config::ThresholdLower && !pump_active) setPumpState(true); // turn pump on if falls lower than lower threshold
-        if (liquid > Config::ThresholdUpper && pump_active) setPumpState(false); // turn pump off if greater than upper threshold
+        if (liquid < Config::ThresholdLower && !pump_active)
+        {
+            setPumpState(true); // turn pump on if falls lower than lower threshold
+        }
+        if (liquid > Config::ThresholdUpper && pump_active)
+        {
+            setPumpState(false); // turn pump off if greater than upper threshold
+        }
     }
 
 }

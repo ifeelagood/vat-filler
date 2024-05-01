@@ -25,6 +25,7 @@ target_link_arduino_libraries(vat_filler
     AccelStepper
     core
 )
+set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 
 
 target_enable_arduino_upload(vat_filler)
